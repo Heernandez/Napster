@@ -1,2 +1,1 @@
-# Napster
-A napster implementation using Python 3.7  and pyzmq library
+Implementacion de Arquitectura P2P  Napster con Python y Zmq
