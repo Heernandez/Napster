@@ -2,18 +2,15 @@ import zmq
 import os
 
 PROXY_DIR = "localhost:6000"
-pygame.init()
 ctx = zmq.Context()
 def connection():
     # Conexion al proxy para solicitar listado de archivos y direccion de servidores
-
    s = ctx.socket(zmq.REQ)
    s.connect("tcp://"+PROXY_DIR) #direccion del proxy
    return s
 
 def connection_2(serverDir):
     # Conexion con un determinado servidor para solicitud de archivo: formato ip:puerto
-
     s = ctx.socket(zmq.REQ) 
     s.connect("tcp://"+serverDir)
     return s
@@ -33,7 +30,7 @@ if __name__ == '__main__':
     files = []
     while(True):
 
-        os.system("clear")
+        #os.system("cls") #aplica para windows
         print("\n-----------------------\n")
         print("C/S Napster \n")
         print("1.Explorar\n")
@@ -46,38 +43,50 @@ if __name__ == '__main__':
         s = connection()
         
         if op == 1:
-            m = { "request" : "ListadoDeArchivos"}
 
-            s.send_pyobj(m)
+            s.send_pyobj({ "request" : "ListadoDeArchivos"})
             r = s.recv_pyobj()
-            '''
-            if isinstance(r["reply"],dict):
-                for artista in r["reply"].keys():
-                    print("Artista  : {} ".format(artista))
-                    for album in artista.keys():
-                        print("    Album : {}".format(album))
-                        for song in r[artista][album]:
-                            print("        {}".format(song))
-            '''
             if r["reply"] == False:
 
                 print("No hay archivos compartidos disponibles!")
-
             else:
+                
                 files = lista(r["reply"])
                 contador = 1
-                
                 for key in r["reply"].keys():
                     for value in r["reply"][key]:
                         print("{}.{}".format(contador,value))
-                        contador += 1
-                eleccion = int(input("Ingrese el numero del archivo que desea!"))
-                    
+                        contador += 1    
+                _ = input("Presione una tecla para continuar")    
         elif op == 2:
             if  len(files) == 0:
-                    print("Aun no se ha  realizado consulta de archivos disponibles!")
+                    _ = input("Aun no se ha  realizado consulta de archivos disponibles!..\nPresione una tecla para continuar")
+                    #os.system("Pause") # Aplica en windows ... 
+            else:
+                eleccion = int(input("Ingrese el numero del archivo que desea!"))
+                if (eleccion > 0 and eleccion <= len(files)):
+                        
+                    for key in r["reply"].keys():
+                                
+                        for value in r["reply"][key]:
+                            
+                            if value == files[eleccion]:
+                                print("Le dire al servidor en ",key)
+                                server = connection_2(key)
+                                server.send_pyobj({"request":"FileDownload","name":value})
+                                song = server.recv_pyobj()
+                                server.disconnect(key)
+                                
+                                #aqui guardo el archivo y tambien se puede iniciar la reproduccion si se desea con alguna libreria
+                                if song["reply"] == False:
+                                    print("Es posible que el archivo haya sido eliminado del servidor!")
+                                else:
+                                    with open(song["name"],'ab') as f:
+                                        f.write(song["reply"])
+                                        f.close()
+                                break
                 else:
-            
+                    print("La eleccion no coincide con ningun archivo!")
         elif op == 3:
             s.disconnect("tcp://"+PROXY_DIR)
             break
