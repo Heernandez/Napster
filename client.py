@@ -1,94 +1,85 @@
 import zmq
 import os
-import pygame 
-pygame.mixer.pre_init(44100, -16, 2, 2048) 
 
+PROXY_DIR = "localhost:6000"
 pygame.init()
 ctx = zmq.Context()
-
 def connection():
+    # Conexion al proxy para solicitar listado de archivos y direccion de servidores
 
    s = ctx.socket(zmq.REQ)
-   s.connect("tcp://localhost:6000") #direccion del proxy
-
+   s.connect("tcp://"+PROXY_DIR) #direccion del proxy
    return s
 
-def connection_2(PORT):
+def connection_2(serverDir):
+    # Conexion con un determinado servidor para solicitud de archivo: formato ip:puerto
 
     s = ctx.socket(zmq.REQ) 
-    s.connect("tcp://localhost:"+PORT)
-
+    s.connect("tcp://"+serverDir)
     return s
+
+def lista(filesDic):
+
+    listFile = []
+    if filesDic == False:
+        return []
+    for key in filesDic.keys():
+        for value in filesDic[key]:
+            listFile.append(value)
+    return listFile
 
 if __name__ == '__main__':
     
-    
-    
+    files = []
     while(True):
+
         os.system("clear")
         print("\n-----------------------\n")
-        print("C/S MusicPlayer \n")
-        print("1.Pistas\n")
-        print("2.Cerrar\n")
+        print("C/S Napster \n")
+        print("1.Explorar\n")
+        print("2.Descargar\n")
+        print("3.Salir\n")
       
         op = int(input("Ingrese opcion: "))
-
         print('\n')
-        
+    
         s = connection()
         
         if op == 1:
-            s.send_multipart([b'2'])
-            msg = s.recv_multipart()
-            indice = 1
-            for i in msg:
-                print (str(indice)+'.'+i.decode('utf-8'))
-                indice+=1
-            
-            resp = int(input("Ingrese el numero de la cancion a reproducir o cero (0) para regresar"))
-            if resp == 0:       
-                x = input("presione una tecla ---")
+            m = { "request" : "ListadoDeArchivos"}
+
+            s.send_pyobj(m)
+            r = s.recv_pyobj()
+            '''
+            if isinstance(r["reply"],dict):
+                for artista in r["reply"].keys():
+                    print("Artista  : {} ".format(artista))
+                    for album in artista.keys():
+                        print("    Album : {}".format(album))
+                        for song in r[artista][album]:
+                            print("        {}".format(song))
+            '''
+            if r["reply"] == False:
+
+                print("No hay archivos compartidos disponibles!")
+
             else:
+                files = lista(r["reply"])
+                contador = 1
                 
-                aux = msg[resp-1]
-                print("Has Elegido :",aux.decode('utf-8'))
-                
-                nombre = os.path.splitext(aux.decode('utf-8'))[0]
-                
-                s.send_multipart([b'3',aux])
-                m = s.recv_multipart()
-
-                k = 1
-
-                try:
-                    os.remove('temp.mp3')
-                except:
-                    print("") 
-                
-                
-                for i in m:
-                    s = connection_2(i.decode('utf-8'))
-                    nombrebuscar = nombre + str(k)
-                    s.send_multipart([b'escuchar',nombrebuscar.encode()])
-                
-                    a = s.recv_multipart()
-                    with open('temp.mp3','ab') as f:
-                        f.write(a[0])
-                        f.close()
-                        
-                    k+=1
+                for key in r["reply"].keys():
+                    for value in r["reply"][key]:
+                        print("{}.{}".format(contador,value))
+                        contador += 1
+                eleccion = int(input("Ingrese el numero del archivo que desea!"))
                     
-
-                
-                pygame.mixer.music.load('temp.mp3')
-                pygame.mixer.music.play()
-                
-                while True:
-                    x = input('presione cero (0) para detener la reproduccion')
-                    if x == '0':
-                        break
-                pygame.mixer.music.stop()
-                os.remove('temp.mp3')
-       
         elif op == 2:
+            if  len(files) == 0:
+                    print("Aun no se ha  realizado consulta de archivos disponibles!")
+                else:
+            
+        elif op == 3:
+            s.disconnect("tcp://"+PROXY_DIR)
             break
+        
+        s.disconnect("tcp://"+PROXY_DIR)
