@@ -1,5 +1,8 @@
 import zmq
 import os
+from pygame import mixer
+#pygame.mixer.pre_init(44100, -16, 2, 2048)  Active esta linea si hay errores en la reproduccion
+mixer.init()
 
 PROXY_DIR = "localhost:6000"
 ctx = zmq.Context()
@@ -75,7 +78,7 @@ if __name__ == '__main__':
                                 server = connection_2(key)
                                 server.send_pyobj({"request":"FileDownload","name":value})
                                 song = server.recv_pyobj()
-                                server.disconnect(key)
+                                server.disconnect("tcp://"+key)
                                 
                                 #aqui guardo el archivo y tambien se puede iniciar la reproduccion si se desea con alguna libreria
                                 if song["reply"] == False:
@@ -84,6 +87,16 @@ if __name__ == '__main__':
                                     with open(song["name"],'ab') as f:
                                         f.write(song["reply"])
                                         f.close()
+                                    
+                                    #Reproducir
+                                    mixer.music.load(song["name"]) # si no funciona entonces poner os.getcwd()+"/"+song["name"]
+                                                                       
+                                    while True:
+                                        x = input('presione cero (0) para detener la reproduccion')
+                                        if x == '0':
+                                            break
+                                    pygame.mixer.music.stop()
+                                    #os.remove('temp.mp3') Active esta linea si desea hacer creeer al usuario que no descargo sino que reprodujo en linea solamente
                                 break
                 else:
                     print("La eleccion no coincide con ningun archivo!")
